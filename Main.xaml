@@ -220,13 +220,14 @@
       <AssemblyReference>Microsoft.CodeAnalysis.Features</AssemblyReference>
     </sco:Collection>
   </TextExpression.ReferencesForImplementation>
-  <Sequence sap2010:Annotation.AnnotationText="log&#xD;&#xA;" DisplayName="Main Sequence" sap:VirtualizedContainerService.HintSize="930,445.04" sap2010:WorkflowViewState.IdRef="Sequence_1">
+  <Sequence sap2010:Annotation.AnnotationText="log&#xA;" DisplayName="Main Sequence" sap:VirtualizedContainerService.HintSize="848,402" sap2010:WorkflowViewState.IdRef="Sequence_1">
     <sap:WorkflowViewStateService.ViewState>
       <scg:Dictionary x:TypeArguments="x:String, x:Object">
         <x:Boolean x:Key="IsExpanded">True</x:Boolean>
         <x:Boolean x:Key="IsAnnotationDocked">True</x:Boolean>
       </scg:Dictionary>
     </sap:WorkflowViewStateService.ViewState>
-    <ui:LogMessage DisplayName="로그 메시지" sap:VirtualizedContainerService.HintSize="416,164" sap2010:WorkflowViewState.IdRef="LogMessage_2" Level="Info" Message="[&quot;로그 시작&quot;]" />
+    <ui:LogMessage DisplayName="로그 메시지" sap:VirtualizedContainerService.HintSize="416,173" sap2010:WorkflowViewState.IdRef="LogMessage_2" Level="Info" Message="[&quot;로그 시작&quot;]" />
+    <ui:LogMessage DisplayName="로그 메시지" sap:VirtualizedContainerService.HintSize="416,164" sap2010:WorkflowViewState.IdRef="LogMessage_3" Level="Info" Message="[&quot;로그 종료&quot;]" />
   </Sequence>
 </Activity>

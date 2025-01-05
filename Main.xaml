@@ -228,6 +228,6 @@
       </scg:Dictionary>
     </sap:WorkflowViewStateService.ViewState>
     <ui:LogMessage DisplayName="로그 메시지" sap:VirtualizedContainerService.HintSize="416,173" sap2010:WorkflowViewState.IdRef="LogMessage_2" Level="Info" Message="[&quot;로그 시작&quot;]" />
-    <ui:LogMessage DisplayName="로그 메시지" sap:VirtualizedContainerService.HintSize="416,164" sap2010:WorkflowViewState.IdRef="LogMessage_3" Level="Info" Message="[&quot;로그 종료&quot;]" />
+    <ui:LogMessage DisplayName="로그 메시지" sap:VirtualizedContainerService.HintSize="416,164" sap2010:WorkflowViewState.IdRef="LogMessage_3" Level="Info" Message="[&quot;로그 종료2&quot;]" />
   </Sequence>
 </Activity>

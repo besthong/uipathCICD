@@ -13,15 +13,17 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v2
 
-      # 2) NuGet 피드 추가
-      - name: Add NuGet Feed
+      # 2) NuGet 피드 추가 또는 업데이트
+      - name: Configure NuGet Feed
         run: |
+          dotnet nuget list source || true
+          dotnet nuget update source nuget.org --source https://api.nuget.org/v3/index.json || \
           dotnet nuget add source https://api.nuget.org/v3/index.json --name nuget.org
 
       # 3) UiPath CLI 설치 (버전 명시)
       - name: Install UiPath CLI
         run: |
-          dotnet add package UiPath.CLI --version 24.12.9111.31003
+          dotnet tool install --global UiPath.CLI --version 24.12.9111.31003
 
       # 4) UiPath CLI가 PATH에 포함되도록 설정
       - name: Add UiPath CLI to PATH

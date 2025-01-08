@@ -13,7 +13,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v2
 
-      # 2) UiPath CLI 설치
+      # 2) UiPath CLI 설치, 특정버전 삭제
       - name: Install UiPath CLI
         run: dotnet tool install --global UiPath.CLI
 

@@ -2,41 +2,34 @@ name: UiPath CI/CD
 
 on:
   push:
-    branches: [ "main" ]  # 원하는 브랜치
+    branches: [ "main" ]
 
 jobs:
   build-and-deploy:
     runs-on: windows-latest
-
     steps:
-      # 1) 코드를 체크아웃
       - name: Check out repository
         uses: actions/checkout@v2
 
-      # 2) NuGet 피드 재설정 (옵션)
       - name: Configure NuGet Feed
         run: |
-          dotnet --version  
-          dotnet search UiPath.CLI
           dotnet nuget remove source nuget.org || echo "nuget.org not found, skipping removal"
+          dotnet nuget remove source "C:\Program Files (x86)\Microsoft SDKs\NuGetPackages" || echo "Local feed not found, skipping removal"
           dotnet nuget add source https://api.nuget.org/v3/index.json --name nuget.org
 
-      # 3) UiPath CLI 설치 (최신 안정 버전 예: 24.12.9208.31672)
       - name: Install UiPath CLI
         run: |
           dotnet tool install --global UiPath.CLI --version 24.12.9111.31003
-          # 설치 직후라 아직 PATH에 반영되지 않았으므로 여기서는 uipath --version 호출 생략
+          # 만약 여전히 안되면 --source 파라미터 추가:
+          # dotnet tool install --global UiPath.CLI --version 24.12.9111.31003 --source "https://api.nuget.org/v3/index.json"
 
-      # 4) UiPath CLI를 PATH에 추가 (다음 스텝부터 인식)
       - name: Add UiPath CLI to PATH
         shell: powershell
         run: echo "$env:USERPROFILE\.dotnet\tools" >> $GITHUB_PATH
 
-      # 5) 설치 확인
       - name: Check UiPath Version
         run: uipath --version
 
-      # 6) Orchestrator에 인증
       - name: Authenticate Orchestrator
         run: |
           uipath login \
@@ -46,7 +39,6 @@ jobs:
             --user-key ${{ secrets.UIPATH_USER_KEY }} \
             --account-name ${{ secrets.UIPATH_ACCOUNT_LOGICAL_NAME }}
 
-      # 7) 패키지 Publish
       - name: Publish package to Orchestrator
         run: |
           uipath pack --project-path . --output . --version 1.0.$(date +'%Y%m%d%H%M')

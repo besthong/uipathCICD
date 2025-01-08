@@ -24,7 +24,7 @@ jobs:
       # 3) UiPath CLI 설치 (최신 안정 버전 예: 24.12.9208.31672)
       - name: Install UiPath CLI
         run: |
-          dotnet tool install --global UiPath.CLI --version 24.12.9208.31672
+          dotnet tool install --global UiPath.CLI --version 24.12.9111.31003
           # 설치 직후라 아직 PATH에 반영되지 않았으므로 여기서는 uipath --version 호출 생략
 
       # 4) UiPath CLI를 PATH에 추가 (다음 스텝부터 인식)

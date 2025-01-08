@@ -13,15 +13,17 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v2
 
-      # 2) UiPath CLI 설치, 특정버전 삭제
+      # 2) UiPath CLI 설치
+      # 최신 버전을 명시적으로 설치하도록 변경 (현재기준 1.1.11)
       - name: Install UiPath CLI
-        run: dotnet tool install --global UiPath.CLI
+        run: dotnet tool install --global UiPath.CLI --version 1.1.11
 
       # 3) UiPath CLI가 PATH에 포함되도록 설정
       - name: Add UiPath CLI to PATH
         run: echo "${{ runner.tool_cache }}/dotnet/tools" >> $GITHUB_PATH
 
       # 4) Orchestrator에 인증 (Modern Folder 기준 - External App 방식 예시)
+      # Secrets가 정확히 설정되었는지 확인 필요
       - name: Authenticate Orchestrator
         run: |
           uipath login \
@@ -32,9 +34,10 @@ jobs:
             --account-name ${{ secrets.UIPATH_ACCOUNT_LOGICAL_NAME }}
 
       # 5) 패키지 Publish
-      #   (프로젝트 경로를 지정하지 않으면 현재 디렉터리의 project.json을 기준으로 패키지가 생성됩니다.)
+      # UiPath CLI 명령어를 실행하기 전에 설치 확인 추가
       - name: Publish package to Orchestrator
         run: |
+          uipath --version  # CLI 설치 확인
           uipath pack --project-path . --output . --version 1.0.$(date +'%Y%m%d%H%M')
           uipath push --orchestrator --feed MyPackages --publish-single
 
@@ -42,13 +45,3 @@ jobs:
           #   - pack: 프로젝트 -> NuGet 패키지(.nupkg) 생성
           #   - push: 생성된 패키지를 Orchestrator의 MyPackages 피드에 업로드
           #   - feed 이름은 Orchestrator 설정에 따라 다를 수 있음
-
-      # 6) 프로세스 업데이트 (선택적)
-      #   - 패키지를 업로드한 뒤 특정 모던 폴더에 프로세스를 업데이트/배포할 수도 있음
-      - name: Update process in Orchestrator (Optional)
-        run: |
-          uipath process update \
-            --process-name "MyProcessName" \
-            --package-name "MyProject" \
-            --package-version "1.0.$(date +'%Y%m%d%H%M')" \
-            --folder-name "Default"

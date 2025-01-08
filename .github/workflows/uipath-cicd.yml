@@ -16,6 +16,8 @@ jobs:
       # 2) NuGet 피드 추가 또는 삭제 후 재등록
       - name: Configure NuGet Feed
         run: |
+          dotnet --version  
+          dotnet search UiPath.CLI
           dotnet nuget remove source nuget.org || echo "nuget.org not found, skipping removal"
           dotnet nuget add source https://api.nuget.org/v3/index.json --name nuget.org
 

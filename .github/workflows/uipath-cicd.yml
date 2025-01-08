@@ -13,17 +13,21 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v2
 
-      # 2) UiPath CLI 설치
-      # 최신 버전을 명시적으로 설치하도록 변경 (현재기준 1.1.11)
-      - name: Install UiPath CLI
-        run: dotnet tool install --global UiPath.CLI --version 1.1.11
+      # 2) NuGet 피드 추가
+      - name: Add NuGet Feed
+        run: |
+          dotnet nuget add source https://api.nuget.org/v3/index.json --name nuget.org
 
-      # 3) UiPath CLI가 PATH에 포함되도록 설정
+      # 3) UiPath CLI 설치 (버전 명시)
+      - name: Install UiPath CLI
+        run: |
+          dotnet add package UiPath.CLI --version 24.12.9111.31003
+
+      # 4) UiPath CLI가 PATH에 포함되도록 설정
       - name: Add UiPath CLI to PATH
         run: echo "${{ runner.tool_cache }}/dotnet/tools" >> $GITHUB_PATH
 
-      # 4) Orchestrator에 인증 (Modern Folder 기준 - External App 방식 예시)
-      # Secrets가 정확히 설정되었는지 확인 필요
+      # 5) Orchestrator에 인증
       - name: Authenticate Orchestrator
         run: |
           uipath login \
@@ -33,15 +37,9 @@ jobs:
             --user-key ${{ secrets.UIPATH_USER_KEY }} \
             --account-name ${{ secrets.UIPATH_ACCOUNT_LOGICAL_NAME }}
 
-      # 5) 패키지 Publish
-      # UiPath CLI 명령어를 실행하기 전에 설치 확인 추가
+      # 6) 패키지 Publish
       - name: Publish package to Orchestrator
         run: |
-          uipath --version  # CLI 설치 확인
+          uipath --version
           uipath pack --project-path . --output . --version 1.0.$(date +'%Y%m%d%H%M')
           uipath push --orchestrator --feed MyPackages --publish-single
-
-          # 참조:
-          #   - pack: 프로젝트 -> NuGet 패키지(.nupkg) 생성
-          #   - push: 생성된 패키지를 Orchestrator의 MyPackages 피드에 업로드
-          #   - feed 이름은 Orchestrator 설정에 따라 다를 수 있음

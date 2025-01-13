@@ -1,4 +1,4 @@
-name: UiPath CI/CD
+name: UiPath API CI/CD
 
 on:
   push:
@@ -8,42 +8,118 @@ jobs:
   build-and-deploy:
     runs-on: windows-latest
     steps:
-      # (1) 리포지토리 체크아웃
+      # 1) 저장소 체크아웃
       - name: Check out repository
         uses: actions/checkout@v2
 
-      # (2) UiPath CLI가 있는 사설 피드(MyGet) 등록
-      - name: Configure UiPath Private Feed
+      # 2) (선택) .nupkg 생성 빌드가 필요하다면 이 사이에 추가
+
+      # 3) Orchestrator API 호출 (PowerShell)
+      - name: Upload package to Orchestrator via API
+        shell: pwsh
         run: |
-          dotnet nuget add source "https://www.myget.org/F/uipath-dev/api/v3/index.json" --name UiPathCLI
+          $ErrorActionPreference = "Stop"
 
-      # (3) UiPath CLI 설치
-      - name: Install UiPath CLI
-        run: |
-          dotnet tool install --global UiPath.CLI --prerelease --source "UiPathCLI"
+          # --- (1) 환경 변수 → 스크립트 변수 매핑 ---
+          $accountName        = $env:UIPATH_ACCOUNT_LOGICAL_NAME
+          $tenantLogicalName  = $env:UIPATH_TENANT_LOGICAL_NAME
+          $clientId           = $env:UIPATH_CLIENT_ID
+          $userKey            = $env:UIPATH_USER_KEY
+          $tenantName         = $env:UIPATH_TENANT
+
+          # --- (2) Orchestrator 기본 URL 구성 ---
+          $orchestratorUrl = "https://cloud.uipath.com/$($accountName)/$($tenantLogicalName)"
+          Write-Host "Orchestrator URL: $orchestratorUrl"
+
+          # --- (3) Orchestrator 인증 (구버전 API) ---
+          $authBody = @{
+              tenancyName            = $tenantName
+              usernameOrEmailAddress = $clientId    # Client ID
+              password               = $userKey     # User Key
+          }
+          $authJson = $authBody | ConvertTo-Json
+          Write-Host "Auth Body: $authJson"
+
+          $authResponse = Invoke-RestMethod -Uri "$($orchestratorUrl)/api/Account/Authenticate" `
+                                            -Method POST `
+                                            -Body $authJson `
+                                            -ContentType "application/json"
+          if (-not $authResponse.result) {
+            Write-Error "Authentication failed. Check credentials."
+            exit 1
+          }
+          $authToken = $authResponse.result
+          Write-Host "Authentication succeeded. Token: $authToken"
+
+          # --- (4) 패키지 업로드 ---
+          # .nupkg 파일은 리포지토리에 'MyProject.1.0.0.nupkg' 라고 가정
+          $packagePath = ".\MyProject.1.0.0.nupkg"
+          if (-not (Test-Path $packagePath)) {
+            Write-Error "Could not find nupkg file at: $packagePath"
+            exit 1
+          }
+          Write-Host "Uploading package: $packagePath"
+
+          Invoke-RestMethod -Uri "$($orchestratorUrl)/odata/Processes/UiPath.Server.Configuration.OData.UploadPackage" `
+                            -Method POST `
+                            -Headers @{ Authorization = "Bearer $authToken" } `
+                            -Form @{ package = Get-Item $packagePath }
+
+          Write-Host "Package uploaded successfully!"
+        env:
+          UIPATH_ACCOUNT_LOGICAL_NAME: ${{ secrets.UIPATH_ACCOUNT_LOGICAL_NAME }}
+          UIPATH_CLIENT_ID: ${{ secrets.UIPATH_CLIENT_ID }}
+          UIPATH_TENANT: ${{ secrets.UIPATH_TENANT }}
+          UIPATH_TENANT_LOGICAL_NAME: ${{ secrets.UIPATH_TENANT_LOGICAL_NAME }}
+          UIPATH_USER_KEY: ${{ secrets.UIPATH_USER_KEY }}
 
 
-      # (4) CLI PATH 등록
-      - name: Add UiPath CLI to PATH
-        shell: powershell
-        run: echo "$env:USERPROFILE\.dotnet\tools" >> $GITHUB_PATH
-
-      # (5) 설치 확인
-      - name: Check UiPath Version
-        run: uipath --version
-
-      # (6) Orchestrator 인증
-      - name: Authenticate Orchestrator
-        run: |
-          uipath login \
-            --organization-url https://cloud.uipath.com \
-            --tenant-name ${{ secrets.UIPATH_TENANT_LOGICAL_NAME }} \
-            --client-id ${{ secrets.UIPATH_CLIENT_ID }} \
-            --user-key ${{ secrets.UIPATH_USER_KEY }} \
-            --account-name ${{ secrets.UIPATH_ACCOUNT_LOGICAL_NAME }}
-
-      # (7) 패키지 생성 & Orchestrator 배포
-      - name: Publish package to Orchestrator
-        run: |
-          uipath pack --project-path . --output . --version 1.0.$(date +'%Y%m%d%H%M')
-          uipath push --orchestrator --feed MyPackages --publish-single
+#name: UiPath CI/CD
+#
+#on:
+#  push:
+#    branches: [ "main" ]
+#
+#jobs:
+#  build-and-deploy:
+#    runs-on: windows-latest
+#    steps:
+#      # (1) 리포지토리 체크아웃
+#      - name: Check out repository
+#        uses: actions/checkout@v2
+#
+#      # (2) UiPath CLI가 있는 사설 피드(MyGet) 등록
+#      - name: Configure UiPath Private Feed
+#        run: |
+#          dotnet nuget add source "https://www.myget.org/F/uipath-dev/api/v3/index.json" --name UiPathCLI
+#
+#      # (3) UiPath CLI 설치
+#      - name: Install UiPath CLI
+#        run: |
+#          dotnet tool install --global UiPath.CLI --prerelease --source "UiPathCLI"
+#
+#
+#      # (4) CLI PATH 등록
+#      - name: Add UiPath CLI to PATH
+#        shell: powershell
+#        run: echo "$env:USERPROFILE\.dotnet\tools" >> $GITHUB_PATH
+#
+#      # (5) 설치 확인
+#      - name: Check UiPath Version
+#        run: uipath --version
+#
+#      # (6) Orchestrator 인증
+#      - name: Authenticate Orchestrator
+#        run: |
+#          uipath login \
+#            --organization-url https://cloud.uipath.com \
+#            --tenant-name ${{ secrets.UIPATH_TENANT_LOGICAL_NAME }} \
+#            --client-id ${{ secrets.UIPATH_CLIENT_ID }} \
+#            --user-key ${{ secrets.UIPATH_USER_KEY }} \
+#            --account-name ${{ secrets.UIPATH_ACCOUNT_LOGICAL_NAME }}
+#
+#      # (7) 패키지 생성 & Orchestrator 배포
+#      - name: Publish package to Orchestrator
+#        run: |
+#          uipath pack --project-path . --output . --version 1.0.$(date +'%Y%m%d%H%M')
+#          uipath push --orchestrator --feed MyPackages --publish-single

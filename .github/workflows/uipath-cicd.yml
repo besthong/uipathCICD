@@ -20,7 +20,7 @@ jobs:
       # (3) UiPath CLI 설치
       - name: Install UiPath CLI
         run: |
-          dotnet tool install --global UiPath.CLI --version
+          dotnet tool install --global UiPath.CLI
 
       # (4) CLI PATH 등록
       - name: Add UiPath CLI to PATH

@@ -17,10 +17,10 @@ jobs:
           dotnet nuget remove source "C:\Program Files (x86)\Microsoft SDKs\NuGetPackages" || echo "Local feed not found, skipping removal"
           dotnet nuget add source https://api.nuget.org/v3/index.json --name nuget.org
 
-      - name: Install UiPath CLI
+      - name: Install UiPath CLI (latest)
         run: |
-          dotnet tool install --global UiPath.CLI --version 24.12.9111.31003
-          # 만약 여전히 안되면 --source 파라미터 추가:
+          dotnet tool install --global UiPath.CLI
+          # 특정 버전이 필요하다면:
           # dotnet tool install --global UiPath.CLI --version 24.12.9111.31003 --source "https://api.nuget.org/v3/index.json"
 
       - name: Add UiPath CLI to PATH

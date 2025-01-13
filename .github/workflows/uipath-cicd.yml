@@ -1,4 +1,4 @@
-name: UiPath API CI/CD
+name: UiPath API CI/CD (Identity OAuth)
 
 on:
   push:
@@ -8,14 +8,10 @@ jobs:
   build-and-deploy:
     runs-on: windows-latest
     steps:
-      # 1) 저장소 체크아웃
       - name: Check out repository
         uses: actions/checkout@v2
 
-      # 2) (선택) .nupkg 생성 빌드가 필요하다면 이 사이에 추가
-
-      # 3) Orchestrator API 호출 (PowerShell)
-      - name: Upload package to Orchestrator via API
+      - name: Upload package to Orchestrator (OAuth)
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -25,51 +21,49 @@ jobs:
           $tenantLogicalName  = $env:UIPATH_TENANT_LOGICAL_NAME
           $clientId           = $env:UIPATH_CLIENT_ID
           $userKey            = $env:UIPATH_USER_KEY
-          $tenantName         = $env:UIPATH_TENANT
+          # $tenantName      = $env:UIPATH_TENANT  # (구버전 auth에서 쓰던 tenancyName은 필요 X)
 
-          # --- (2) Orchestrator 기본 URL 구성 ---
+          # --- (2) Orchestrator 기본 URL (Cloud) ---
+          #   예) https://cloud.uipath.com/<AccountLogicalName>/<TenantLogicalName>
           $orchestratorUrl = "https://cloud.uipath.com/$($accountName)/$($tenantLogicalName)"
           Write-Host "Orchestrator URL: $orchestratorUrl"
 
-          # --- (3) Orchestrator 인증 (구버전 API) ---
-          $authBody = @{
-              tenancyName            = $tenantName
-              usernameOrEmailAddress = $clientId    # Client ID
-              password               = $userKey     # User Key
+          # --- (3) [새 인증] OAuth 토큰 받기 (Identity Server) ---
+          #   클라우드에서 Client ID + User Key = (refresh_token)
+          #   grant_type = "refresh_token"
+          $tokenBody = @{
+              grant_type    = "refresh_token"
+              client_id     = $clientId
+              refresh_token = $userKey
           }
-          $authJson = $authBody | ConvertTo-Json
-          Write-Host "Auth Body: $authJson"
-
-          $authResponse = Invoke-RestMethod -Uri "$($orchestratorUrl)/api/Account/Authenticate" `
+          $tokenResponse = Invoke-RestMethod -Uri "https://cloud.uipath.com/identity_/connect/token" `
                                             -Method POST `
-                                            -Body $authJson `
-                                            -ContentType "application/json"
-          if (-not $authResponse.result) {
-            Write-Error "Authentication failed. Check credentials."
+                                            -Body $tokenBody
+          if (-not $tokenResponse.access_token) {
+            Write-Error "Failed to get OAuth token. Check client_id / user_key."
             exit 1
           }
-          $authToken = $authResponse.result
-          Write-Host "Authentication succeeded. Token: $authToken"
+          $accessToken = $tokenResponse.access_token
+          Write-Host "Got OAuth token (length: $($accessToken.Length))."
 
-          # --- (4) 패키지 업로드 ---
-          # .nupkg 파일은 리포지토리에 'MyProject.1.0.0.nupkg' 라고 가정
+          # --- (4) 패키지 업로드 (Orchestrator API) ---
+          #   nupkg 파일은 예시로 MyProject.1.0.0.nupkg 라고 가정
           $packagePath = ".\MyProject.1.0.0.nupkg"
           if (-not (Test-Path $packagePath)) {
-            Write-Error "Could not find nupkg file at: $packagePath"
+            Write-Error "Could not find package at path: $packagePath"
             exit 1
           }
-          Write-Host "Uploading package: $packagePath"
 
+          Write-Host "Uploading package to Orchestrator..."
           Invoke-RestMethod -Uri "$($orchestratorUrl)/odata/Processes/UiPath.Server.Configuration.OData.UploadPackage" `
                             -Method POST `
-                            -Headers @{ Authorization = "Bearer $authToken" } `
+                            -Headers @{ Authorization = "Bearer $accessToken" } `
                             -Form @{ package = Get-Item $packagePath }
 
           Write-Host "Package uploaded successfully!"
         env:
           UIPATH_ACCOUNT_LOGICAL_NAME: ${{ secrets.UIPATH_ACCOUNT_LOGICAL_NAME }}
           UIPATH_CLIENT_ID: ${{ secrets.UIPATH_CLIENT_ID }}
-          UIPATH_TENANT: ${{ secrets.UIPATH_TENANT }}
           UIPATH_TENANT_LOGICAL_NAME: ${{ secrets.UIPATH_TENANT_LOGICAL_NAME }}
           UIPATH_USER_KEY: ${{ secrets.UIPATH_USER_KEY }}
 
